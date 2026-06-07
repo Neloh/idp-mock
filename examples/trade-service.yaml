@@ -1,0 +1,34 @@
+# Example: Trade Service Hosting Request
+# Submitted by an engineer after discussion with Platform team
+
+metadata:
+  name: "trade-event-processor"
+  team: "capital-markets"
+  requestedBy: "<YOUR_ALIAS>"
+  requestDate: "2026-06-07"
+
+spec:
+  service:
+    runtime: "docker"
+    port: 8080
+    replicas:
+      min: 2
+      max: 8
+
+  container:
+    image: "123456789.dkr.ecr.af-south-1.amazonaws.com/trade-event-processor:latest"
+    cpu: "1024"
+    memory: "2048"
+
+  networking:
+    existingVpcId: "vpc-0abc123def456"
+    subnetType: "private"
+
+  gateway:
+    type: "alb"
+    public: false
+    wafEnabled: true
+
+  security:
+    encryptionAtRest: true
+    encryptionInTransit: true
