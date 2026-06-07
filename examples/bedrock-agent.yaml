@@ -1,0 +1,65 @@
+# AgentCore Runtime — Bedrock Agent Hosting Request
+# Submitted after discussion with Platform team
+
+metadata:
+  name: "idp-platform-agent"
+  team: "platform-engineering"
+  requestedBy: "<YOUR_ALIAS>"
+  requestDate: "2026-06-07"
+
+spec:
+  service:
+    type: "bedrock-agent"
+    runtime: "serverless"             # Bedrock Agents are fully managed
+    region: "us-east-1"
+    model:
+      id: "us.anthropic.claude-sonnet-4-6"
+      type: "inference-profile"
+
+  agent:
+    instruction: |
+      You are an Internal Developer Platform (IDP) agent. You help engineers
+      submit infrastructure requests, validate their specs, and provision
+      cloud resources. You understand VPC networking, ECS Fargate, ALB load
+      balancers, target groups, WAF, and security best practices for
+      financial institutions.
+    idleSessionTTL: 600
+    collaboration: "disabled"
+
+  iam:
+    roleName: "BedrockAgentRole-IDP"
+    trustPolicy:
+      principal: "bedrock.amazonaws.com"
+      condition: "aws:SourceAccount equals <YOUR_ACCOUNT_ID>"
+    permissions:
+      - effect: "Allow"
+        actions:
+          - "bedrock:InvokeModel"
+          - "bedrock:InvokeModelWithResponseStream"
+        resources:
+          - "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-sonnet-4-6"
+          - "arn:aws:bedrock:us-east-1:<YOUR_ACCOUNT_ID>:inference-profile/us.anthropic.claude-sonnet-4-6"
+
+  networking:
+    existingVpcId: "N/A"              # Bedrock is a managed service, no VPC needed
+    subnetType: "N/A"
+
+  gateway:
+    type: "bedrock-agent-alias"       # Invoked via Bedrock Agent Runtime API
+    public: false
+    wafEnabled: false                 # API-level, not HTTP endpoint
+
+  security:
+    encryptionAtRest: true            # Bedrock encrypts by default
+    encryptionInTransit: true
+    accessControl: "IAM"              # Only IAM-authenticated callers
+
+  observability:
+    loggingDestination: "/aws/bedrock/agents/idp-platform-agent"
+    tracingEnabled: true
+
+  approval:
+    securityReviewApproved: false
+    platformTeamApproved: false
+    approverAlias: ""
+    approvalDate: ""
