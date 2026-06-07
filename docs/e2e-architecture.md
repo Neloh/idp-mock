@@ -131,7 +131,7 @@ YAML Spec ──▶ Validator ──▶ Security Gate ──▶ Approval ──�
 
 ---
 
-## Why Build an IDP at a Financial Institution (Andile Context)
+## Why Build an IDP at a Financial Institution
 
 Capital markets teams need:
 1. **Speed** — traders need services deployed fast for market conditions
