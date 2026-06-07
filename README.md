@@ -72,8 +72,20 @@ python -m pytest tests/ -v
 ├── models.py                # Data structures (request, infra state)
 ├── store.py                 # Saves request/infra state as JSON files
 ├── demo.sh                  # Script to run the full demo (for GIF recording)
+├── deploy-agent.sh          # CI/CD pipeline for Bedrock Agent (bash version)
+├── terraform/               # IaC layer — VPC, subnets, IAM, AgentCore Runtime
+│   ├── main.tf              # Provider + backend config
+│   ├── variables.tf         # Input variables
+│   ├── vpc.tf               # VPC, subnets, NAT, SG, endpoints
+│   ├── iam.tf               # IAM roles and policies
+│   ├── agentcore.tf         # AgentCore Runtime provisioning
+│   ├── outputs.tf           # Output values
+│   └── bootstrap.sh         # One-time state bucket setup
+├── .github/workflows/
+│   └── deploy.yml           # GitHub Actions: validate → plan → approve → apply → smoke test
 ├── examples/                # Sample request specs
-│   └── trade-service.yaml
+│   ├── trade-service.yaml
+│   └── bedrock-agent.yaml
 ├── tests/                   # Automated tests
 │   └── test_e2e.py
 ├── docs/                    # Architecture diagrams and docs

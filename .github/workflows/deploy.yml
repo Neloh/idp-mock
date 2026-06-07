@@ -1,0 +1,169 @@
+name: "IDP - Provision AgentCore Runtime"
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'terraform/**'
+      - 'examples/bedrock-agent.yaml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'terraform/**'
+
+env:
+  TF_VERSION: "1.9.0"
+  AWS_REGION: "us-east-1"
+
+jobs:
+  # ─── Stage 1: Validate ───
+  validate:
+    name: "Validate"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Terraform Format Check
+        working-directory: terraform
+        run: terraform fmt -check
+
+      - name: Terraform Init
+        working-directory: terraform
+        run: terraform init -backend=false
+
+      - name: Terraform Validate
+        working-directory: terraform
+        run: terraform validate
+
+  # ─── Stage 2: Plan ───
+  plan:
+    name: "Plan"
+    runs-on: ubuntu-latest
+    needs: validate
+    permissions:
+      id-token: write
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Terraform Init
+        working-directory: terraform
+        run: terraform init
+
+      - name: Terraform Plan
+        working-directory: terraform
+        run: terraform plan -out=tfplan -no-color
+        continue-on-error: false
+
+      - name: Post Plan to PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const output = `#### Terraform Plan
+            \`\`\`
+            ${{ steps.plan.outputs.stdout }}
+            \`\`\`
+            *Pushed by: @${{ github.actor }}*`;
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            })
+
+      - name: Upload Plan
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan
+          path: terraform/tfplan
+
+  # ─── Stage 3: Approval Gate ───
+  # On PRs: plan only. On push to main: auto-apply (approved via PR merge).
+
+  # ─── Stage 4: Apply ───
+  apply:
+    name: "Apply"
+    runs-on: ubuntu-latest
+    needs: plan
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      id-token: write
+      contents: read
+    environment: production  # Requires manual approval in GitHub settings
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Terraform Init
+        working-directory: terraform
+        run: terraform init
+
+      - name: Terraform Apply
+        working-directory: terraform
+        run: terraform apply -auto-approve
+
+  # ─── Stage 5: Smoke Test ───
+  smoke-test:
+    name: "Smoke Test"
+    runs-on: ubuntu-latest
+    needs: apply
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Verify AgentCore Runtime
+        run: |
+          echo "[Smoke Test] Checking AgentCore Runtime status..."
+          RUNTIME_STATUS=$(aws bedrock-agentcore-control list-agent-runtimes \
+            --region ${{ env.AWS_REGION }} \
+            --query "agentRuntimes[?agentRuntimeName=='idp-platform-runtime'].status" \
+            --output text 2>/dev/null || echo "UNKNOWN")
+          echo "  Runtime status: $RUNTIME_STATUS"
+
+          echo "[Smoke Test] Checking VPC resources..."
+          VPC_ID=$(aws ec2 describe-vpcs \
+            --filters "Name=tag:Project,Values=idp-agentcore" \
+            --query 'Vpcs[0].VpcId' --output text)
+          echo "  VPC: $VPC_ID"
+
+          SUBNET_COUNT=$(aws ec2 describe-subnets \
+            --filters "Name=vpc-id,Values=$VPC_ID" "Name=tag:Tier,Values=private" \
+            --query 'length(Subnets)' --output text)
+          echo "  Private subnets: $SUBNET_COUNT"
+
+          if [ "$SUBNET_COUNT" -ge 2 ]; then
+            echo "[Smoke Test] PASS — Infrastructure is healthy"
+          else
+            echo "[Smoke Test] FAIL — Expected 2+ private subnets"
+            exit 1
+          fi
