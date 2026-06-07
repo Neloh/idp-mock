@@ -1,0 +1,37 @@
+# environments/config.yaml
+# One file, all environments. Engineers never edit this — Platform team owns it.
+# The IDP reads this to know WHERE to deploy based on the spec's target environment.
+
+environments:
+  dev:
+    region: "us-east-1"
+    vpc_id: "vpc-0b6f0ffdcd2089e3f"
+    subnets:
+      - "subnet-05955c71f792f0ae8"
+      - "subnet-0dbac50fa2df47e3a"
+    security_group: "sg-084d29e6b1def4986"
+    ecr_repo: "966262213808.dkr.ecr.us-east-1.amazonaws.com/idp-agentcore-runtime"
+    role_arn: "arn:aws:iam::966262213808:role/AgentCoreRuntimeRole"
+    approval_required: false
+
+  staging:
+    region: "us-east-1"
+    vpc_id: "vpc-0b6f0ffdcd2089e3f"
+    subnets:
+      - "subnet-05955c71f792f0ae8"
+      - "subnet-0dbac50fa2df47e3a"
+    security_group: "sg-084d29e6b1def4986"
+    ecr_repo: "966262213808.dkr.ecr.us-east-1.amazonaws.com/idp-agentcore-runtime"
+    role_arn: "arn:aws:iam::966262213808:role/AgentCoreRuntimeRole"
+    approval_required: true
+
+  prod:
+    region: "eu-west-1"
+    vpc_id: "<PROD_VPC_ID>"
+    subnets:
+      - "<PROD_SUBNET_1>"
+      - "<PROD_SUBNET_2>"
+    security_group: "<PROD_SG>"
+    ecr_repo: "<PROD_ACCOUNT>.dkr.ecr.eu-west-1.amazonaws.com/idp-agentcore-runtime"
+    role_arn: "arn:aws:iam::<PROD_ACCOUNT>:role/AgentCoreRuntimeRole"
+    approval_required: true
