@@ -50,8 +50,8 @@ Engineers describe WHAT they need, the platform handles HOW it gets built.
                                 ▼
                        ┌─────────────────┐
                        │ 5. APPROVE      │
-                       │ security: ✓     │
-                       │ platform: ✓     │
+                       │ security: PASS  │
+                       │ platform: PASS  │
                        └────────┬────────┘
                                 │
                                 ▼

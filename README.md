@@ -1,8 +1,8 @@
 # IDP Mock — Internal Developer Platform
 
-> A simple working example of how a Platform Engineering team can let developers
-> request infrastructure through a form, review it for security, and automatically
-> set everything up.
+> A working example of how Platform Engineering teams let developers request
+> infrastructure through a spec, review it for security, and provision it
+> automatically — whether on-prem, cloud, or hybrid.
 
 ![Demo](docs/demo.gif)
 
@@ -10,22 +10,44 @@
 
 ## What Is This?
 
-This is a **mock Internal Developer Platform (IDP)**. It shows the full process:
+This is a mock Internal Developer Platform (IDP). It shows the full process:
 
-1. **Engineer fills in a YAML form** saying what they need (container, port, size, etc.)
-2. **Platform validates it** — checks nothing is missing or misconfigured
-3. **Security review runs** — blocks anything dangerous (e.g. public endpoint with no WAF)
-4. **Provisioner creates the infra** — security group, load balancer, target group, ECS service
-5. **Engineer gets their endpoint** — service is live
+1. Engineer fills in a YAML form saying what they need
+2. Platform validates it — checks nothing is missing or misconfigured
+3. Security review runs — blocks anything dangerous
+4. Provisioner creates the infra — security group, load balancer, target group, compute service
+5. Engineer gets their endpoint — service is live
 
-The infrastructure is simulated (no real AWS calls), but the logic and workflow are real.
+The infrastructure is simulated (no real AWS calls), but the logic and workflow are production-realistic.
+
+---
+
+## Why This Matters
+
+An IDP solves three problems that financial institutions face:
+
+**Resilience** — Every service gets at least 2 replicas across availability zones.
+If one fails, the load balancer routes traffic to healthy instances automatically.
+
+**Scalability** — Auto-scaling is built into every deployment. The platform handles
+scaling from min to max replicas based on load without engineer intervention.
+
+**Disaster Recovery** — The standard architecture uses:
+- Multi-AZ deployments (survive a data centre failure)
+- Health checks with automatic replacement of failed tasks
+- Infrastructure-as-code so any environment can be rebuilt from the spec
+- State stored externally (not on compute) so tasks are disposable
+
+**On-Prem vs Cloud** — The same spec-driven workflow works regardless of target:
+- Cloud: provisions into AWS (ECS, ALB, CloudWatch)
+- On-Prem: provisions into Kubernetes, HAProxy, Prometheus (same pattern, different provisioner)
+- Hybrid: gateway in cloud, compute on-prem (or vice versa)
 
 ---
 
 ## Quick Start
 
 ```bash
-# Install dependencies
 pip install -r requirements.txt
 
 # Run the full demo
@@ -85,20 +107,58 @@ This mock uses placeholder values. In a real setup, replace these:
 
 | Placeholder | Real Value |
 |-------------|-----------|
-| `vpc-0abc123def456` | Your actual VPC ID |
-| `123456789` | Your AWS account ID |
-| `af-south-1` | Your AWS region |
-| `123456789.dkr.ecr...` | Your ECR image URI |
+| `<YOUR_VPC_ID>` | Your actual VPC ID |
+| `<ACCOUNT_ID>` | Your AWS account ID |
+| `<REGION>` | Your AWS region |
+| `<SERVICE_NAME>` | Your ECR image name |
 | JSON file store | DynamoDB, PostgreSQL, or your DB of choice |
-| `platform_cli.py` | Web UI (Backstage, Port) or API |
-| `provisioner.py` | Terraform, CDK, or Crossplane |
+| `platform_cli.py` | Web portal (Backstage, Port) or API |
+| `provisioner.py` | Terraform, CDK, Crossplane, or Ansible (on-prem) |
 
 ---
 
-## What This Demonstrates
+## How PaaS Handles Resilience and Disaster Recovery
 
-- **Self-service**: Engineers describe what they want, platform handles the how
-- **Security by default**: WAF, private subnets, encryption — enforced automatically
-- **Golden path**: Every service gets the same proven architecture
-- **Auditability**: Every request is saved with who asked, who approved, and what was built
-- **Capital markets ready**: VPC reuse (shared bank network), compliance gates, HA (min 2 replicas)
+```
+                      REGION (e.g. af-south-1)
+ ┌──────────────────────────────────────────────────────────┐
+ │                                                          │
+ │   AZ-a                         AZ-b                      │
+ │  ┌────────────────┐           ┌────────────────┐         │
+ │  │  Subnet        │           │  Subnet        │         │
+ │  │  ┌──────────┐  │           │  ┌──────────┐  │         │
+ │  │  │  Task 1  │  │           │  │  Task 2  │  │         │
+ │  │  └──────────┘  │           │  └──────────┘  │         │
+ │  └────────────────┘           └────────────────┘         │
+ │           │                           │                  │
+ │           └─────────┬─────────────────┘                  │
+ │                     │                                    │
+ │              ┌──────┴───────┐                            │
+ │              │ Load Balancer│ ← health checks            │
+ │              │ + WAF        │ ← auto-failover            │
+ │              └──────────────┘                            │
+ └──────────────────────────────────────────────────────────┘
+
+ If Task 1 dies → LB stops sending traffic to it
+                → Auto-scaling launches replacement
+                → Zero downtime
+
+ If AZ-a goes down → LB routes all traffic to AZ-b
+                   → New tasks launch in AZ-b
+                   → Service stays up
+```
+
+## On-Prem Equivalent
+
+| Cloud (AWS) | On-Prem Equivalent |
+|-------------|-------------------|
+| ECS Fargate | Kubernetes pods |
+| ALB | HAProxy / Nginx / F5 |
+| WAF | ModSecurity / Cloudflare |
+| CloudWatch | Prometheus + Grafana |
+| Auto Scaling | Kubernetes HPA |
+| Multi-AZ | Multiple data centres |
+| ECR | Harbor (private registry) |
+| Secrets Manager | HashiCorp Vault |
+
+The IDP abstracts this away — engineers submit the same spec regardless of target.

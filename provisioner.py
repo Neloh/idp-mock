@@ -25,29 +25,29 @@ def provision(request_id: str) -> InfraState:
 
     # Step 1: Security Group
     sg_id = mock_resource_id("sg")
-    print(f"  ✓ Created Security Group: {sg_id}")
+    print(f"  [OK] Created Security Group: {sg_id}")
 
     # Step 2: Target Group
     tg_arn = f"arn:aws:elasticloadbalancing:af-south-1:123456789:targetgroup/{spec.name}-tg/{uuid.uuid4().hex[:12]}"
-    print(f"  ✓ Created Target Group: {tg_arn}")
+    print(f"  [OK] Created Target Group: {tg_arn}")
 
     # Step 3: Load Balancer
     alb_arn = f"arn:aws:elasticloadbalancing:af-south-1:123456789:loadbalancer/app/{spec.name}-alb/{uuid.uuid4().hex[:12]}"
     alb_dns = f"{spec.name}-alb-{uuid.uuid4().hex[:8]}.af-south-1.elb.amazonaws.com"
-    print(f"  ✓ Created ALB: {alb_dns}")
+    print(f"  [OK] Created ALB: {alb_dns}")
 
     # Step 4: ECS Cluster + Service
     cluster = f"{spec.team}-cluster"
     ecs_service = f"arn:aws:ecs:af-south-1:123456789:service/{cluster}/{spec.name}"
-    print(f"  ✓ Created ECS Service: {spec.name} (min={spec.replicas_min}, max={spec.replicas_max})")
+    print(f"  [OK] Created ECS Service: {spec.name} (min={spec.replicas_min}, max={spec.replicas_max})")
 
     # Step 5: CloudWatch Log Group
     log_group = f"/ecs/{spec.team}/{spec.name}"
-    print(f"  ✓ Created Log Group: {log_group}")
+    print(f"  [OK] Created Log Group: {log_group}")
 
     # Step 6: WAF
     if spec.waf_enabled:
-        print(f"  ✓ Attached WAF Web ACL to ALB")
+        print(f"  [OK] Attached WAF Web ACL to ALB")
 
     # Save infra state
     infra = InfraState(
@@ -63,7 +63,7 @@ def provision(request_id: str) -> InfraState:
     save_infra(infra)
     update_status(request_id, RequestStatus.DEPLOYED)
 
-    print(f"\n[PROVISIONER] ✅ Deployment complete!")
+    print(f"\n[PROVISIONER] DEPLOYMENT COMPLETE")
     print(f"  Endpoint: https://{alb_dns}")
     print(f"  Logs:     {log_group}")
     print(f"  Status:   DEPLOYED")
