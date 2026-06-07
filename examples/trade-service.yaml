@@ -1,33 +1,35 @@
 # Example: Trade Service Hosting Request
-# Submitted by an engineer after discussion with Platform team
+# ─────────────────────────────────────────────
+# Fill this in and submit to the platform team.
+# Replace all placeholder values with your real details.
 
 metadata:
-  name: "trade-event-processor"
-  team: "capital-markets"
-  requestedBy: "<YOUR_ALIAS>"
-  requestDate: "2026-06-07"
+  name: "trade-event-processor"       # ← Your service name
+  team: "capital-markets"             # ← Your team name
+  requestedBy: "your-alias"           # ← Your name or username
+  requestDate: "2026-06-07"           # ← Today's date
 
 spec:
   service:
     runtime: "docker"
-    port: 8080
+    port: 8080                        # ← Port your container listens on
     replicas:
-      min: 2
-      max: 8
+      min: 2                          # ← Minimum 2 for high availability
+      max: 8                          # ← Max scale-out
 
   container:
-    image: "123456789.dkr.ecr.af-south-1.amazonaws.com/trade-event-processor:latest"
-    cpu: "1024"
-    memory: "2048"
+    image: "<ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com/<SERVICE_NAME>:latest"  # ← Your ECR image
+    cpu: "1024"                       # ← 256, 512, 1024, 2048, or 4096
+    memory: "2048"                    # ← Memory in MB
 
   networking:
-    existingVpcId: "vpc-0abc123def456"
-    subnetType: "private"
+    existingVpcId: "<YOUR_VPC_ID>"    # ← Must exist already (e.g. vpc-0abc123)
+    subnetType: "private"             # ← private (recommended) or public
 
   gateway:
-    type: "alb"
-    public: false
-    wafEnabled: true
+    type: "alb"                       # ← alb or api-gateway
+    public: false                     # ← true = internet-facing, false = internal only
+    wafEnabled: true                  # ← MUST be true if public is true
 
   security:
     encryptionAtRest: true
